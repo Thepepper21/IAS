@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Typing Game</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .result {
+        font-weight: bold;
+        color: darkblue;
+      }
+      .hidden {
+        display: none;
+      }
+      textarea {
+        width: 300px;
+        height: 100px;
+        margin: 10px 0;
+      }
+      .phrase {
+        font-size: 1.2em;
+        margin: 10px 0;
+        padding: 10px;
+        background-color: #f0f0f0;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Step 1: Enter Phrases for the Game</h2>
+    <form id="wordForm">
+      <textarea
+        id="wordInput"
+        placeholder="Enter a phrase or sentence..."
+      ></textarea>
+      <button type="submit">Add Phrase</button>
+    </form>
+    <ul id="wordList"></ul>
+    <button id="startGameBtn">Start Game</button>
+
+    <div id="gameSection" class="hidden">
+      <h2>Step 2: Typing Game</h2>
+      <div class="phrase">Phrase to Type: <span id="gameWord"></span></div>
+      <form id="typingForm">
+        <input
+          id="typingInput"
+          placeholder="Type the phrase above..."
+        ></input>
+        <button type="submit">Check</button>
+      </form>
+      <p>Your Input: <span id="userInput"></span></p>
+      <p>Result: <span id="typingResult" class="result"></span></p>
+      <button id="nextWordBtn" class="hidden">Next Phrase</button>
+    </div>
+
+    <script>
+      // Default phrases with multiple words
+      const defaultWords = [
+        "The quick brown fox jumps over the lazy dog",
+        "To be or not to be, that is the question",
+        "All that glitters is not gold",
+        "A journey of a thousand miles begins with a single step",
+        "Practice makes perfect",
+        "Actions speak louder than words",
+        "Better late than never",
+        "Every cloud has a silver lining",
+        "When in Rome, do as the Romans do",
+        "Time heals all wounds"
+      ];
+
+      let customWords = [];
+      let gameWords = [];
+      let currentWordIndex = 0;
+
+      // Step 1: Add phrases to list
+      const wordForm = document.getElementById("wordForm");
+      const wordInput = document.getElementById("wordInput");
+      const wordList = document.getElementById("wordList");
+      const startGameBtn = document.getElementById("startGameBtn");
+
+      wordForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const phrase = wordInput.value.trim();
+        if (phrase) {
+          customWords.push(phrase);
+          const li = document.createElement("li");
+          li.textContent = phrase;
+          wordList.appendChild(li);
+          wordInput.value = "";
+        }
+      });
+
+      // Step 1: Start game button
+      startGameBtn.addEventListener("click", function () {
+        gameWords = customWords.length > 0 ? customWords : defaultWords;
+        document.getElementById("gameSection").classList.remove("hidden");
+        wordForm.classList.add("hidden");
+        startGameBtn.classList.add("hidden");
+        wordList.classList.add("hidden");
+        showNextWord();
+      });
+
+      // Step 2: Typing game logic
+      const gameWordElem = document.getElementById("gameWord");
+      const typingInput = document.getElementById("typingInput");
+      const typingResult = document.getElementById("typingResult");
+      const userInputElem = document.getElementById("userInput");
+      const nextWordBtn = document.getElementById("nextWordBtn");
+      const typingForm = document.getElementById("typingForm");
+
+      function showNextWord() {
+        if (currentWordIndex < gameWords.length) {
+          typingInput.value = "";
+          typingResult.textContent = "";
+          userInputElem.textContent = "";
+          gameWordElem.textContent = gameWords[currentWordIndex];
+          typingInput.disabled = false;
+          nextWordBtn.classList.add("hidden");
+          typingInput.focus();
+        } else {
+          gameWordElem.textContent = "Game Over!";
+          typingInput.disabled = true;
+          typingResult.textContent = "";
+          userInputElem.textContent = "";
+          nextWordBtn.classList.add("hidden");
+        }
+      }
+
+      // Check if typed phrase matches exactly
+      function typeChecker(typedPhrase) {
+        userInputElem.textContent = typedPhrase;
+        if (typedPhrase === gameWords[currentWordIndex]) {
+          typingResult.textContent = "✅ Perfect Match!";
+          typingInput.disabled = true;
+          nextWordBtn.classList.remove("hidden");
+        } else {
+          // Calculate similarity percentage
+          const similarity = calculateSimilarity(typedPhrase, gameWords[currentWordIndex]);
+          if (similarity >= 0.9) {
+            typingResult.textContent = `✅ Correct! (${Math.round(similarity * 100)}% match)`;
+            typingInput.disabled = true;
+            nextWordBtn.classList.remove("hidden");
+          } else {
+            typingResult.textContent = `❌ Try again! (${Math.round(similarity * 100)}% match)`;
+            nextWordBtn.classList.add("hidden");
+          }
+        }
+      }
+
+      // Calculate similarity between two strings
+      function calculateSimilarity(str1, str2) {
+        const longer = str1.length > str2.length ? str1 : str2;
+        const shorter = str1.length > str2.length ? str2 : str1;
+        
+        if (longer.length === 0) return 1.0;
+        
+        return (longer.length - levenshteinDistance(longer, shorter)) / longer.length;
+      }
+
+      // Levenshtein distance calculation
+      function levenshteinDistance(str1, str2) {
+        const matrix = Array(str2.length + 1).fill(null)
+          .map(() => Array(str1.length + 1).fill(null));
+
+        for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+        for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+
+        for (let j = 1; j <= str2.length; j++) {
+          for (let i = 1; i <= str1.length; i++) {
+            const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(
+              matrix[j][i - 1] + 1,
+              matrix[j - 1][i] + 1,
+              matrix[j - 1][i - 1] + indicator
+            );
+          }
+        }
+        return matrix[str2.length][str1.length];
+      }
+
+      // Typing form submit
+      typingForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        typeChecker(typingInput.value.trim());
+      });
+
+      // Next word button
+      nextWordBtn.addEventListener("click", function () {
+        currentWordIndex++;
+        showNextWord();
+      });
+
+      // Real-time input feedback
+      typingInput.addEventListener("input", function (e) {
+        userInputElem.textContent = typingInput.value;
+        typingResult.textContent = "";
+        nextWordBtn.classList.add("hidden");
+      });
+    </script>
+  </body>
+</html>
